@@ -1,1 +1,1 @@
-# detect-twinks-accounts
+# detect-twins-accounts
