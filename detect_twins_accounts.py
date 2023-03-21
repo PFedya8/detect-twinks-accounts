@@ -1,10 +1,22 @@
+"""This Python script is designed to detect potential "twin" accounts based on the analysis of user messages. The
+script processes input data in the JSONL format and uses word frequency analysis and common message comparison to
+determine account similarity. The result is a list of "twin" account pairs that may be related to each other.
+
+Main functions of the script:
+1. Load data from a JSONL file.
+2. Create a dictionary of identical messages with a list of authors.
+3. Find identical messages with more than one author.
+4. Find all possible combinations of authors in identical messages.
+5. Create a frequency dictionary for each author without trivial phrases.
+6. Analyze frequency dictionaries and identify suspicious accounts.
+7. Combine results and output a list of "twin" account pairs.
+"""
+
 import collections
-import copy
 import itertools
 import json
 import string
-import sys
-
+import argparse
 
 def load_data(path):
     """
@@ -14,6 +26,7 @@ def load_data(path):
     with open(path, 'r') as f:
         data = [json.loads(line) for line in f]
     return data
+
 
 def find_suspicious(dictionary, coefficient):
     suspicious = []
@@ -35,18 +48,18 @@ def find_suspicious(dictionary, coefficient):
     return suspicious
 
 
-def create_dict(message_dat, words_more_than = 1):
+def create_dict(message_dat, words_more_than=1):
     """
     Create dictionary
     :param message_dat: data
     :param words_more_than: count of words in message more than will be included into dictionary
-    :return: dictionary of same messages with list of authors
+    :return: a dictionary of same messages with list of authors
     """
     groups = collections.defaultdict(list)
     for line in message_dat:
-        line['message'] = line['message'].lower()
-        if line['author_id'] not in groups[line['message']] and len(line['message'].split()) > words_more_than:
-            groups[line['message']].append(line['author_id'])
+        message = line['message'].lower()
+        if line['author_id'] not in groups[message] and len(message.split()) > words_more_than:
+            groups[message].append(line['author_id'])
     return groups
 
 
@@ -64,7 +77,6 @@ def find_same_messages(same_messages):
     return more_one_author
 
 
-
 # find all possible combinations of authors in same messages
 def find_all_combinations(large):
     all_comb = []
@@ -78,7 +90,7 @@ def crete_freq_dict(data, common):
     """
     Create frequency dictionary
     :param data: main data
-    :param common: common words that we dont have to add to dictionary
+    :param common: common words that we don't have to add to dictionary
     :return: frequency dictionary for each author
     """
     freq = {}
@@ -94,11 +106,11 @@ def crete_freq_dict(data, common):
     return freq
 
 
-def analyse_frequency_dicts(data_dict, top_k = 10, threshold = 0.5, min_words = 2):
+def analyse_frequency_dicts(data_dict, top_k=10, threshold=0.5, min_words=2):
     """
     Analyse frequency dictionaries and find suspicious accounts
     :param data_dict: frequency dictionary
-    :param top_k: top k words to compaer
+    :param top_k: top k words to compare
     :param threshold: threshold for suspicious accounts
     :param min_words: if less than min_words words in account, we have to adjust threshold
     :return: list of suspicious accounts
@@ -121,6 +133,7 @@ def analyse_frequency_dicts(data_dict, top_k = 10, threshold = 0.5, min_words = 
         if len(common_words) / top_k >= adjusted_threshold:
             suspicious.append((account1, account2))
     return suspicious
+
 
 def combine_results(suspicious_ac, all_comb):
     """
@@ -147,11 +160,10 @@ def print_results(twins_accounts):
 
 def find_twins_accounts():
     # load data
-    if len(sys.argv) < 2:
-        print('Please provide the path to the data file')
-        sys.exit(1)
-    file_name = sys.argv[1]
-    data_mes = load_data(file_name)
+    parser = argparse.ArgumentParser(description='Load some data from file')
+    parser.add_argument('file_name', help='the path to data file')
+    args = parser.parse_args()
+    data_mes = load_data(args.filr_name)
     # common words
     common_words = ['+1', 'done', 'thanks', 'hi', 'thank', ':-)', 'ok', 'please',
                     'looks', 'good', 'nice', 'sure']
@@ -159,7 +171,7 @@ def find_twins_accounts():
     # dictionary of same messages with list of authors
     same_mes = create_dict(data_mes, 2)
     # we need to save data for frequency dictionary
-    data_for_freq = copy.deepcopy(data_mes)
+    data_for_freq = data_mes
 
     # find same messages with more than 1 author
     large_same_mes = find_same_messages(same_mes)
